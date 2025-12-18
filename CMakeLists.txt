@@ -18,11 +18,23 @@ set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(lib/glfw)
 
-add_executable(CG_expri4 src/main.cpp)
+file(GLOB_RECURSE SRC_FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
+)
+
+if(NOT SRC_FILES)
+    message(FATAL_ERROR "No source files found in src/ directory. Please add source files or update CMakeLists.txt")
+endif()
+
+add_executable(${PROJECT_NAME} ${SRC_FILES})
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     lib/glad/include
+    lib
     lib/glm
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
     # GLFW 的头文件目录会通过 target_link_libraries 自动添加
 )
 
