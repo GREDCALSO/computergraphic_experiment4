@@ -51,24 +51,24 @@ void UiLayer::draw(SceneRenderer& scene) {
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(14.0f, 10.0f));
 
-        ImGui::Text("场景图元: %zu", scene.instanceCount());
+        ImGui::Text("Scene Primitives: %zu", scene.instanceCount());
         ImGui::SameLine();
 
-        if (ImGui::Button("生成基本图形")) {
+        if (ImGui::Button("Generate Primitive")) {
             ImGui::OpenPopup("primitive_popup");
         }
 
         if (ImGui::BeginPopup("primitive_popup")) {
-            if (ImGui::MenuItem("球体")) {
+            if (ImGui::MenuItem("Sphere")) {
                 scene.addPrimitive(PrimitiveType::Sphere);
             }
-            if (ImGui::MenuItem("柱体")) {
+            if (ImGui::MenuItem("Cylinder")) {
                 scene.addPrimitive(PrimitiveType::Cylinder);
             }
-            if (ImGui::MenuItem("平面")) {
+            if (ImGui::MenuItem("Plane")) {
                 scene.addPrimitive(PrimitiveType::Plane);
             }
-            if (ImGui::MenuItem("六面体")) {
+            if (ImGui::MenuItem("Cube")) {
                 scene.addPrimitive(PrimitiveType::Cube);
             }
             ImGui::EndPopup();
@@ -76,12 +76,12 @@ void UiLayer::draw(SceneRenderer& scene) {
 
         ImGui::SameLine();
 
-        if (ImGui::Button("清除所有图形")) {
+        if (ImGui::Button("Clear All Primitives")) {
             scene.clear();
         }
 
         ImGui::SameLine();
-        ImGui::TextDisabled("按底栏按钮生成或清空图元");
+        ImGui::TextDisabled("Use the bottom bar buttons to generate or clear primitives");
 
         ImGui::PopStyleVar(2);
     }
