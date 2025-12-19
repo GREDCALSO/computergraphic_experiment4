@@ -1,6 +1,8 @@
 #define IMGUI_IMPL_OPENGL_LOADER_GLAD
 #include "ui_layer.h"
 
+#include <cstdio>
+
 #include"Auth.h"
 
 UiLayer::UiLayer() = default;
@@ -38,8 +40,42 @@ void UiLayer::draw(SceneRenderer& scene, const Camera& camera) {
     }
 
     ImGuiIO& io = ImGui::GetIO();
-    const float barHeight = 64.0f;
 
+    // transform panel (top-left)
+    ImGui::SetNextWindowPos(ImVec2(12.0f, 12.0f));
+    ImGui::SetNextWindowBgAlpha(0.85f);
+    if (ImGui::Begin("Transform", nullptr, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text("Transform Mode");
+        ImGui::SameLine();
+        ImGui::RadioButton("Select Objective", reinterpret_cast<int*>(&mode), static_cast<int>(TransformMode::Select));
+        ImGui::SameLine();
+        ImGui::RadioButton("Translate", reinterpret_cast<int*>(&mode), static_cast<int>(TransformMode::Translate));
+        ImGui::SameLine();
+        ImGui::RadioButton("Rotate", reinterpret_cast<int*>(&mode), static_cast<int>(TransformMode::Rotate));
+        ImGui::SameLine();
+        ImGui::RadioButton("Scale", reinterpret_cast<int*>(&mode), static_cast<int>(TransformMode::Scale));
+
+        const auto& instances = scene.getInstances();
+        const int selected = scene.getSelectedIndex();
+        if (instances.empty()) {
+            ImGui::TextDisabled("No primitives");
+        }
+        else {
+            for (size_t i = 0; i < instances.size(); ++i) {
+                char label[64];
+                snprintf(label, sizeof(label), "%zu: %s", i, typeLabel(instances[i].type));
+                if (ImGui::Selectable(label, static_cast<int>(i) == selected)) {
+                    scene.select(static_cast<int>(i));
+                }
+            }
+        }
+
+        ImGui::Separator();
+        ImGui::TextDisabled("R/T/Y -> increase\nF/G/H -> decrease");
+    }
+    ImGui::End();
+
+    const float barHeight = 64.0f;
     ImGui::SetNextWindowPos(ImVec2(0.0f, io.DisplaySize.y - barHeight));
     ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, barHeight));
 
@@ -140,4 +176,14 @@ void UiLayer::applyStyle() {
     colors[ImGuiCol_FrameBg] = ImVec4(0.14f, 0.16f, 0.21f, 1.00f);
     colors[ImGuiCol_FrameBgHovered] = ImVec4(0.18f, 0.22f, 0.28f, 1.00f);
     colors[ImGuiCol_FrameBgActive] = ImVec4(0.16f, 0.20f, 0.26f, 1.00f);
+}
+
+const char* UiLayer::typeLabel(PrimitiveType type) const {
+    switch (type) {
+    case PrimitiveType::Cube: return "Cube";
+    case PrimitiveType::Sphere: return "Sphere";
+    case PrimitiveType::Cylinder: return "Cylinder";
+    case PrimitiveType::Plane: return "Plane";
+    }
+    return "Unknown";
 }

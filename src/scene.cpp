@@ -74,11 +74,13 @@ void SceneRenderer::init() {
 
 void SceneRenderer::addPrimitive(PrimitiveType type, const glm::vec3& position) {
     ensureMesh(type);
-    instances.push_back({ type, position, glm::vec3(1.0f) });
+    instances.push_back({ type, position, glm::vec3(1.0f), glm::vec3(0.0f) });
+    selectedIndex = static_cast<int>(instances.size()) - 1;
 }
 
 void SceneRenderer::clear() {
     instances.clear();
+    selectedIndex = -1;
 }
 
 void SceneRenderer::draw(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& cameraPos) {
@@ -102,12 +104,25 @@ void SceneRenderer::draw(const glm::mat4& view, const glm::mat4& projection, con
 
         glm::mat4 model(1.0f);
         model = glm::translate(model, instance.position);
+        model = glm::rotate(model, glm::radians(instance.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+        model = glm::rotate(model, glm::radians(instance.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::rotate(model, glm::radians(instance.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
         model = glm::scale(model, instance.scale);
         litShader.setMat4("model", model);
         litShader.setVec3("objectColor", colorForType(instance.type));
 
         glBindVertexArray(it->second.VAO);
         glDrawElements(GL_TRIANGLES, it->second.indexCount, GL_UNSIGNED_INT, nullptr);
+
+        const size_t idx = static_cast<size_t>(&instance - instances.data());
+        if (static_cast<int>(idx) == selectedIndex) {
+            // draw outline in wireframe for selection highlight
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            glLineWidth(2.0f);
+            litShader.setVec3("objectColor", glm::vec3(1.0f, 0.9f, 0.3f));
+            glDrawElements(GL_TRIANGLES, it->second.indexCount, GL_UNSIGNED_INT, nullptr);
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        }
     }
 
     glBindVertexArray(0);
@@ -385,4 +400,40 @@ glm::vec3 SceneRenderer::colorForType(PrimitiveType type) const {
         return glm::vec3(0.75f, 0.75f, 0.8f);
     }
     return glm::vec3(0.8f);
+}
+
+void SceneRenderer::select(int index) {
+    if (index >= 0 && index < static_cast<int>(instances.size())) {
+        selectedIndex = index;
+    }
+}
+
+void SceneRenderer::clearSelection() {
+    selectedIndex = -1;
+}
+
+void SceneRenderer::translateSelected(const glm::vec3& delta) {
+    if (selectedIndex < 0 || selectedIndex >= static_cast<int>(instances.size())) {
+        return;
+    }
+    instances[static_cast<size_t>(selectedIndex)].position += delta;
+}
+
+void SceneRenderer::rotateSelected(const glm::vec3& deltaDegrees) {
+    if (selectedIndex < 0 || selectedIndex >= static_cast<int>(instances.size())) {
+        return;
+    }
+    instances[static_cast<size_t>(selectedIndex)].rotation += deltaDegrees;
+}
+
+void SceneRenderer::scaleSelected(const glm::vec3& deltaScale) {
+    if (selectedIndex < 0 || selectedIndex >= static_cast<int>(instances.size())) {
+        return;
+    }
+    auto& inst = instances[static_cast<size_t>(selectedIndex)];
+    glm::vec3 adjusted = deltaScale;
+    if (inst.type == PrimitiveType::Plane) {
+        adjusted.z = 0.0f; // plane has no thickness along z
+    }
+    inst.scale = glm::max(inst.scale + adjusted, glm::vec3(0.1f));
 }

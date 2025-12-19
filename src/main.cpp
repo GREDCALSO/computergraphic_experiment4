@@ -100,7 +100,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int /*mod
     }
 }
 
-void processInput(GLFWwindow* window, float deltaTime) {
+void processInput(GLFWwindow* window, float deltaTime, SceneRenderer& scene, UiLayer& ui) {
     AppContext* ctx = reinterpret_cast<AppContext*>(glfwGetWindowUserPointer(window));
     if (ctx && ctx->ui && ctx->ui->WantCaptureKeyboard()) {
         return;
@@ -110,21 +110,59 @@ void processInput(GLFWwindow* window, float deltaTime) {
         glfwSetWindowShouldClose(window, true);
     }
 
-    if (!gRightMouseDown) {
-        return;
+    // camera movement only when RMB is held
+    if (gRightMouseDown) {
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+            gCamera.ProcessKeyboard(Camera::MoveDir::Forward, deltaTime);
+        }
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+            gCamera.ProcessKeyboard(Camera::MoveDir::Backward, deltaTime);
+        }
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+            gCamera.ProcessKeyboard(Camera::MoveDir::Left, deltaTime);
+        }
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+            gCamera.ProcessKeyboard(Camera::MoveDir::Right, deltaTime);
+        }
     }
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-        gCamera.ProcessKeyboard(Camera::MoveDir::Forward, deltaTime);
-    }
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-        gCamera.ProcessKeyboard(Camera::MoveDir::Backward, deltaTime);
-    }
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-        gCamera.ProcessKeyboard(Camera::MoveDir::Left, deltaTime);
-    }
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-        gCamera.ProcessKeyboard(Camera::MoveDir::Right, deltaTime);
+    // transforms regardless of RMB
+    const int selected = scene.getSelectedIndex();
+    const bool hasSelection = selected >= 0;
+    const float moveStep = 0.25f;
+    const float rotStep = 5.0f;
+    const float scaleStep = 0.1f;
+
+    if (hasSelection) {
+        switch (ui.getMode()) {
+        case UiLayer::TransformMode::Translate:
+            if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) scene.translateSelected(glm::vec3(moveStep, 0.0f, 0.0f));
+            if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) scene.translateSelected(glm::vec3(-moveStep, 0.0f, 0.0f));
+            if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS) scene.translateSelected(glm::vec3(0.0f, moveStep, 0.0f));
+            if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS) scene.translateSelected(glm::vec3(0.0f, -moveStep, 0.0f));
+            if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS) scene.translateSelected(glm::vec3(0.0f, 0.0f, moveStep));
+            if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS) scene.translateSelected(glm::vec3(0.0f, 0.0f, -moveStep));
+            break;
+        case UiLayer::TransformMode::Rotate:
+            if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) scene.rotateSelected(glm::vec3(rotStep, 0.0f, 0.0f));
+            if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) scene.rotateSelected(glm::vec3(-rotStep, 0.0f, 0.0f));
+            if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS) scene.rotateSelected(glm::vec3(0.0f, rotStep, 0.0f));
+            if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS) scene.rotateSelected(glm::vec3(0.0f, -rotStep, 0.0f));
+            if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS) scene.rotateSelected(glm::vec3(0.0f, 0.0f, rotStep));
+            if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS) scene.rotateSelected(glm::vec3(0.0f, 0.0f, -rotStep));
+            break;
+        case UiLayer::TransformMode::Scale:
+            if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) scene.scaleSelected(glm::vec3(scaleStep, 0.0f, 0.0f));
+            if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) scene.scaleSelected(glm::vec3(-scaleStep, 0.0f, 0.0f));
+            if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS) scene.scaleSelected(glm::vec3(0.0f, scaleStep, 0.0f));
+            if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS) scene.scaleSelected(glm::vec3(0.0f, -scaleStep, 0.0f));
+            if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS) scene.scaleSelected(glm::vec3(0.0f, 0.0f, scaleStep));
+            if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS) scene.scaleSelected(glm::vec3(0.0f, 0.0f, -scaleStep));
+            break;
+        case UiLayer::TransformMode::Select:
+        default:
+            break;
+        }
     }
 }
 
@@ -187,7 +225,7 @@ int main() {
         hud.updateTimers(deltaTime);
         ui.beginFrame();
 
-        processInput(window, deltaTime);
+        processInput(window, deltaTime, scene, ui);
 
         glClearColor(0.08f, 0.09f, 0.12f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

@@ -19,8 +19,13 @@ public:
     bool WantCaptureMouse() const;
     bool WantCaptureKeyboard() const;
 
+    enum class TransformMode { Select, Translate, Rotate, Scale };
+    TransformMode getMode() const { return mode; }
+
 private:
     void applyStyle();
+    const char* typeLabel(PrimitiveType type) const;
 
     bool initialized = false;
+    TransformMode mode = TransformMode::Select;
 };

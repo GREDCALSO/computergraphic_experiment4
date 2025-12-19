@@ -19,6 +19,7 @@ struct PrimitiveInstance {
     PrimitiveType type;
     glm::vec3 position;
     glm::vec3 scale;
+    glm::vec3 rotation; // Euler degrees XYZ
 };
 
 class SceneRenderer {
@@ -31,6 +32,13 @@ public:
     void clear();
     void draw(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& cameraPos);
     size_t instanceCount() const { return instances.size(); }
+    const std::vector<PrimitiveInstance>& getInstances() const { return instances; }
+    int getSelectedIndex() const { return selectedIndex; }
+    void select(int index);
+    void clearSelection();
+    void translateSelected(const glm::vec3& delta);
+    void rotateSelected(const glm::vec3& deltaDegrees);
+    void scaleSelected(const glm::vec3& deltaScale);
 
 private:
     struct Mesh {
@@ -54,4 +62,5 @@ private:
 
     std::map<PrimitiveType, Mesh> meshes;
     std::vector<PrimitiveInstance> instances;
+    int selectedIndex = -1;
 };
