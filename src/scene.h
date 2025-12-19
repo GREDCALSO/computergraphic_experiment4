@@ -39,6 +39,9 @@ public:
     void translateSelected(const glm::vec3& delta);
     void rotateSelected(const glm::vec3& deltaDegrees);
     void scaleSelected(const glm::vec3& deltaScale);
+    void setSelectedPosition(const glm::vec3& position);
+    PrimitiveInstance* getSelectedMutable();
+    const PrimitiveInstance* getSelected() const;
 
 private:
     struct Mesh {

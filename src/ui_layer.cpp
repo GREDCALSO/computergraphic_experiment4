@@ -45,9 +45,9 @@ void UiLayer::draw(SceneRenderer& scene, const Camera& camera) {
     ImGui::SetNextWindowPos(ImVec2(12.0f, 12.0f));
     ImGui::SetNextWindowBgAlpha(0.85f);
     if (ImGui::Begin("Transform", nullptr, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::Text("Transform Mode");
+        ImGui::Text("Transform Mode:");
         ImGui::SameLine();
-        ImGui::RadioButton("Select Objective", reinterpret_cast<int*>(&mode), static_cast<int>(TransformMode::Select));
+        ImGui::RadioButton("Select Object", reinterpret_cast<int*>(&mode), static_cast<int>(TransformMode::Select));
         ImGui::SameLine();
         ImGui::RadioButton("Translate", reinterpret_cast<int*>(&mode), static_cast<int>(TransformMode::Translate));
         ImGui::SameLine();
@@ -71,7 +71,16 @@ void UiLayer::draw(SceneRenderer& scene, const Camera& camera) {
         }
 
         ImGui::Separator();
-        ImGui::TextDisabled("R/T/Y -> increase\nF/G/H -> decrease");
+        ImGui::TextDisabled("R/F/T/G/Y/H Transform Axis\nLeft click to select, drag to translate, scroll wheel to adjust depth");
+    }
+    ImGui::End();
+
+    // speed hint at top center
+    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, 8.0f), ImGuiCond_Always, ImVec2(0.5f, 0.0f));
+    ImGui::SetNextWindowBgAlpha(0.2f);
+    if (ImGui::Begin("SpeedHint", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings |
+        ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove)) {
+        ImGui::Text("Viewing Angle Movement Speed(Keyboard): %.2f", cameraSpeed);
     }
     ImGui::End();
 

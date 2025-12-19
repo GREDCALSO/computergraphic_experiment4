@@ -21,6 +21,7 @@ public:
 
     enum class TransformMode { Select, Translate, Rotate, Scale };
     TransformMode getMode() const { return mode; }
+    void setCameraSpeed(float speed) { cameraSpeed = speed; }
 
 private:
     void applyStyle();
@@ -28,4 +29,5 @@ private:
 
     bool initialized = false;
     TransformMode mode = TransformMode::Select;
+    float cameraSpeed = 0.0f;
 };

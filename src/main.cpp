@@ -1,8 +1,11 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#define GLM_ENABLE_EXPERIMENTAL
 
 #include <glm/glm.hpp>
+#include <glm/gtc/integer.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/component_wise.hpp>
 
 #include "axes.h"
 #include "camera.h"
@@ -10,20 +13,113 @@
 #include "hud.h"
 #include "scene.h"
 #include "ui_layer.h"
+#include <limits>
+#include <cmath>
 
 namespace {
     int gScreenWidth = 1920;
     int gScreenHeight = 1080;
     Camera gCamera;
     bool gRightMouseDown = false;
+    bool gLeftMouseDown = false;
+    bool gDraggingObject = false;
     bool gFirstDrag = true;
     double gLastX = 0.0;
     double gLastY = 0.0;
+    glm::vec3 gDragPlaneNormal(0.0f, 1.0f, 0.0f);
+    glm::vec3 gDragPlanePoint(0.0f);
+    glm::vec3 gDragOffset(0.0f);
 
     struct AppContext {
         HudRenderer* hud = nullptr;
         UiLayer* ui = nullptr;
+        SceneRenderer* scene = nullptr;
     };
+}
+
+glm::vec3 screenRayDirection(double xpos, double ypos) {
+    const float x = static_cast<float>(xpos);
+    const float y = static_cast<float>(ypos);
+    const float ndcX = (2.0f * x) / static_cast<float>(gScreenWidth) - 1.0f;
+    const float ndcY = 1.0f - (2.0f * y) / static_cast<float>(gScreenHeight);
+
+    const glm::mat4 projection = glm::perspective(glm::radians(45.0f), static_cast<float>(gScreenWidth) / static_cast<float>(gScreenHeight), 0.1f, 100.0f);
+    const glm::mat4 invProj = glm::inverse(projection);
+    glm::vec4 eye = invProj * glm::vec4(ndcX, ndcY, -1.0f, 1.0f);
+    eye.z = -1.0f;
+    eye.w = 0.0f;
+
+    const glm::mat4 invView = glm::inverse(gCamera.GetViewMatrix());
+    const glm::vec4 world = invView * eye;
+    return glm::normalize(glm::vec3(world));
+}
+
+bool raySphereHit(const glm::vec3& rayOrigin, const glm::vec3& rayDir, const glm::vec3& center, float radius, float& tHit) {
+    const glm::vec3 oc = rayOrigin - center;
+    const float a = glm::dot(rayDir, rayDir);
+    const float b = 2.0f * glm::dot(oc, rayDir);
+    const float c = glm::dot(oc, oc) - radius * radius;
+    const float discriminant = b * b - 4.0f * a * c;
+    if (discriminant < 0.0f) {
+        return false;
+    }
+    const float sqrtDisc = std::sqrt(discriminant);
+    const float t0 = (-b - sqrtDisc) / (2.0f * a);
+    const float t1 = (-b + sqrtDisc) / (2.0f * a);
+    float t = t0 > 0.0f ? t0 : t1;
+    if (t <= 0.0f) {
+        return false;
+    }
+    tHit = t;
+    return true;
+}
+
+int pickInstance(double xpos, double ypos, const SceneRenderer& scene) {
+    const auto& instances = scene.getInstances();
+    if (instances.empty()) {
+        return -1;
+    }
+
+    const glm::vec3 rayOrigin = gCamera.GetPosition();
+    const glm::vec3 rayDir = screenRayDirection(xpos, ypos);
+
+    float closest = std::numeric_limits<float>::max();
+    int best = -1;
+
+    for (size_t i = 0; i < instances.size(); ++i) {
+        float baseRadius = 0.8f;
+        switch (instances[i].type) {
+        case PrimitiveType::Cube: baseRadius = 0.9f; break;
+        case PrimitiveType::Sphere: baseRadius = 0.6f; break;
+        case PrimitiveType::Cylinder: baseRadius = 0.8f; break;
+        case PrimitiveType::Plane: baseRadius = 0.8f; break;
+        }
+        const float scaleMax = glm::compMax(instances[i].scale);
+        const float radius = baseRadius * scaleMax;
+
+        float tHit = 0.0f;
+        if (raySphereHit(rayOrigin, rayDir, instances[i].position, radius, tHit)) {
+            if (tHit < closest) {
+                closest = tHit;
+                best = static_cast<int>(i);
+            }
+        }
+    }
+
+    return best;
+}
+
+bool rayPlaneIntersection(const glm::vec3& rayOrigin, const glm::vec3& rayDir, const glm::vec3& planePoint, const glm::vec3& planeNormal, glm::vec3& outPoint) {
+    const float denom = glm::dot(rayDir, planeNormal);
+    if (std::abs(denom) < 1e-4f) {
+        return false;
+    }
+    const float t = glm::dot(planePoint - rayOrigin, planeNormal) / denom;
+    if (t < 0.0f) {
+        return false;
+    }
+    outPoint = rayOrigin + t * rayDir;
+    return true;
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -35,6 +131,12 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 void scroll_callback(GLFWwindow* window, double /*xoffset*/, double yoffset) {
     AppContext* ctx = reinterpret_cast<AppContext*>(glfwGetWindowUserPointer(window));
     if (ctx && ctx->ui && ctx->ui->WantCaptureMouse()) {
+        return;
+    }
+
+    if (ctx && ctx->scene && ctx->ui && ctx->ui->getMode() == UiLayer::TransformMode::Translate && ctx->scene->getSelectedIndex() >= 0) {
+        const float depthStep = 0.25f * static_cast<float>(yoffset);
+        ctx->scene->translateSelected(gCamera.GetFront() * depthStep);
         return;
     }
 
@@ -55,12 +157,21 @@ void scroll_callback(GLFWwindow* window, double /*xoffset*/, double yoffset) {
 }
 
 void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
-    if (!gRightMouseDown) {
+    AppContext* ctx = reinterpret_cast<AppContext*>(glfwGetWindowUserPointer(window));
+    if (ctx && ctx->ui && ctx->ui->WantCaptureMouse()) {
         return;
     }
 
-    AppContext* ctx = reinterpret_cast<AppContext*>(glfwGetWindowUserPointer(window));
-    if (ctx && ctx->ui && ctx->ui->WantCaptureMouse()) {
+    if (gDraggingObject && ctx && ctx->scene && ctx->ui && ctx->ui->getMode() == UiLayer::TransformMode::Translate && ctx->scene->getSelectedIndex() >= 0) {
+        const glm::vec3 rayOrigin = gCamera.GetPosition();
+        const glm::vec3 rayDir = screenRayDirection(xpos, ypos);
+        glm::vec3 hit;
+        if (rayPlaneIntersection(rayOrigin, rayDir, gDragPlanePoint, gDragPlaneNormal, hit)) {
+            ctx->scene->setSelectedPosition(hit + gDragOffset);
+        }
+    }
+
+    if (!gRightMouseDown) {
         return;
     }
 
@@ -98,6 +209,41 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int /*mod
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         }
     }
+
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        if (action == GLFW_PRESS) {
+            gLeftMouseDown = true;
+            double xpos = 0.0;
+            double ypos = 0.0;
+            glfwGetCursorPos(window, &xpos, &ypos);
+
+            if (ctx && ctx->scene) {
+                const int hit = pickInstance(xpos, ypos, *ctx->scene);
+                if (hit >= 0) {
+                    ctx->scene->select(hit);
+                }
+
+                if (ctx->ui && ctx->ui->getMode() == UiLayer::TransformMode::Translate && ctx->scene->getSelectedIndex() >= 0) {
+                    const PrimitiveInstance* inst = ctx->scene->getSelected();
+                    if (inst) {
+                        const glm::vec3 rayOrigin = gCamera.GetPosition();
+                        const glm::vec3 rayDir = screenRayDirection(xpos, ypos);
+                        gDragPlaneNormal = gCamera.GetFront();
+                        gDragPlanePoint = inst->position;
+                        glm::vec3 hitPoint;
+                        if (rayPlaneIntersection(rayOrigin, rayDir, gDragPlanePoint, gDragPlaneNormal, hitPoint)) {
+                            gDragOffset = inst->position - hitPoint;
+                            gDraggingObject = true;
+                        }
+                    }
+                }
+            }
+        }
+        else if (action == GLFW_RELEASE) {
+            gLeftMouseDown = false;
+            gDraggingObject = false;
+        }
+    }
 }
 
 void processInput(GLFWwindow* window, float deltaTime, SceneRenderer& scene, UiLayer& ui) {
@@ -129,9 +275,9 @@ void processInput(GLFWwindow* window, float deltaTime, SceneRenderer& scene, UiL
     // transforms regardless of RMB
     const int selected = scene.getSelectedIndex();
     const bool hasSelection = selected >= 0;
-    const float moveStep = 0.25f;
-    const float rotStep = 5.0f;
-    const float scaleStep = 0.1f;
+    const float moveStep = 0.01f;
+    const float rotStep = 1.0f;
+    const float scaleStep = 0.01f;
 
     if (hasSelection) {
         switch (ui.getMode()) {
@@ -213,6 +359,7 @@ int main() {
     AppContext ctx;
     ctx.hud = &hud;
     ctx.ui = &ui;
+    ctx.scene = &scene;
     glfwSetWindowUserPointer(window, &ctx);
 
     float lastFrame = 0.0f;
@@ -223,6 +370,7 @@ int main() {
         lastFrame = currentFrame;
 
         hud.updateTimers(deltaTime);
+        ui.setCameraSpeed(gCamera.GetSpeed());
         ui.beginFrame();
 
         processInput(window, deltaTime, scene, ui);

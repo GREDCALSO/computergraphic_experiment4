@@ -433,7 +433,28 @@ void SceneRenderer::scaleSelected(const glm::vec3& deltaScale) {
     auto& inst = instances[static_cast<size_t>(selectedIndex)];
     glm::vec3 adjusted = deltaScale;
     if (inst.type == PrimitiveType::Plane) {
-        adjusted.z = 0.0f; // plane has no thickness along z
+        adjusted.y = 0.0f; // lock height, allow in-plane scaling (x/z)
     }
     inst.scale = glm::max(inst.scale + adjusted, glm::vec3(0.1f));
+}
+
+void SceneRenderer::setSelectedPosition(const glm::vec3& position) {
+    if (selectedIndex < 0 || selectedIndex >= static_cast<int>(instances.size())) {
+        return;
+    }
+    instances[static_cast<size_t>(selectedIndex)].position = position;
+}
+
+PrimitiveInstance* SceneRenderer::getSelectedMutable() {
+    if (selectedIndex < 0 || selectedIndex >= static_cast<int>(instances.size())) {
+        return nullptr;
+    }
+    return &instances[static_cast<size_t>(selectedIndex)];
+}
+
+const PrimitiveInstance* SceneRenderer::getSelected() const {
+    if (selectedIndex < 0 || selectedIndex >= static_cast<int>(instances.size())) {
+        return nullptr;
+    }
+    return &instances[static_cast<size_t>(selectedIndex)];
 }
