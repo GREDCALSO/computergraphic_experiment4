@@ -10,8 +10,8 @@
 #include "hud.h"
 
 namespace {
-    int gScreenWidth = 1280;
-    int gScreenHeight = 720;
+    int gScreenWidth = 1920;
+    int gScreenHeight = 1080;
     Camera gCamera;
     bool gRightMouseDown = false;
     bool gFirstDrag = true;
