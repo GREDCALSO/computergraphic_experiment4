@@ -23,11 +23,15 @@ file(GLOB_RECURSE SRC_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
 )
 
+file(GLOB IMGUI_SRC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/ImGui/imgui*.cpp
+)
+
 if(NOT SRC_FILES)
     message(FATAL_ERROR "No source files found in src/ directory. Please add source files or update CMakeLists.txt")
 endif()
 
-add_executable(${PROJECT_NAME} ${SRC_FILES})
+add_executable(${PROJECT_NAME} ${SRC_FILES} ${IMGUI_SRC})
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     lib/glad/include

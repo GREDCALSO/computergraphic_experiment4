@@ -8,6 +8,8 @@
 #include "camera.h"
 #include "grid.h"
 #include "hud.h"
+#include "scene.h"
+#include "ui_layer.h"
 
 namespace {
     int gScreenWidth = 1920;
@@ -17,6 +19,11 @@ namespace {
     bool gFirstDrag = true;
     double gLastX = 0.0;
     double gLastY = 0.0;
+
+    struct AppContext {
+        HudRenderer* hud = nullptr;
+        UiLayer* ui = nullptr;
+    };
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
@@ -26,16 +33,21 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 }
 
 void scroll_callback(GLFWwindow* window, double /*xoffset*/, double yoffset) {
+    AppContext* ctx = reinterpret_cast<AppContext*>(glfwGetWindowUserPointer(window));
+    if (ctx && ctx->ui && ctx->ui->WantCaptureMouse()) {
+        return;
+    }
+
     if (gRightMouseDown) {
         gCamera.AdjustSpeed(static_cast<float>(yoffset));
-        HudRenderer* hud = reinterpret_cast<HudRenderer*>(glfwGetWindowUserPointer(window));
+        HudRenderer* hud = ctx ? ctx->hud : nullptr;
         if (hud) {
             hud->showSpeed(gCamera.GetSpeed());
         }
     }
     else {
         gCamera.Dolly(static_cast<float>(yoffset));
-        HudRenderer* hud = reinterpret_cast<HudRenderer*>(glfwGetWindowUserPointer(window));
+        HudRenderer* hud = ctx ? ctx->hud : nullptr;
         if (hud) {
             hud->showDolly(static_cast<float>(yoffset));
         }
@@ -44,6 +56,11 @@ void scroll_callback(GLFWwindow* window, double /*xoffset*/, double yoffset) {
 
 void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
     if (!gRightMouseDown) {
+        return;
+    }
+
+    AppContext* ctx = reinterpret_cast<AppContext*>(glfwGetWindowUserPointer(window));
+    if (ctx && ctx->ui && ctx->ui->WantCaptureMouse()) {
         return;
     }
 
@@ -63,6 +80,11 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int /*mods*/) {
+    AppContext* ctx = reinterpret_cast<AppContext*>(glfwGetWindowUserPointer(window));
+    if (ctx && ctx->ui && ctx->ui->WantCaptureMouse()) {
+        return;
+    }
+
     if (button == GLFW_MOUSE_BUTTON_RIGHT) {
         if (action == GLFW_PRESS) {
             gRightMouseDown = true;
@@ -79,6 +101,11 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int /*mod
 }
 
 void processInput(GLFWwindow* window, float deltaTime) {
+    AppContext* ctx = reinterpret_cast<AppContext*>(glfwGetWindowUserPointer(window));
+    if (ctx && ctx->ui && ctx->ui->WantCaptureKeyboard()) {
+        return;
+    }
+
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
     }
@@ -138,7 +165,17 @@ int main() {
 
     HudRenderer hud;
     hud.init();
-    glfwSetWindowUserPointer(window, &hud);
+
+    SceneRenderer scene;
+    scene.init();
+
+    UiLayer ui;
+    ui.init(window);
+
+    AppContext ctx;
+    ctx.hud = &hud;
+    ctx.ui = &ui;
+    glfwSetWindowUserPointer(window, &ctx);
 
     float lastFrame = 0.0f;
 
@@ -148,6 +185,7 @@ int main() {
         lastFrame = currentFrame;
 
         hud.updateTimers(deltaTime);
+        ui.beginFrame();
 
         processInput(window, deltaTime);
 
@@ -160,13 +198,17 @@ int main() {
 
         grid.draw(view, projection);
         axes.draw(view, projection);
+        scene.draw(view, projection, gCamera.GetPosition());
 
         hud.draw(gScreenWidth, gScreenHeight);
+        ui.draw(scene);
+        ui.render();
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
+    ui.shutdown();
     glfwTerminate();
     return 0;
 }
