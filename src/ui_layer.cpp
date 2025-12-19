@@ -32,7 +32,7 @@ void UiLayer::beginFrame() {
     ImGui::NewFrame();
 }
 
-void UiLayer::draw(SceneRenderer& scene) {
+void UiLayer::draw(SceneRenderer& scene, const Camera& camera) {
     if (!initialized) {
         return;
     }
@@ -59,17 +59,19 @@ void UiLayer::draw(SceneRenderer& scene) {
         }
 
         if (ImGui::BeginPopup("primitive_popup")) {
+            const glm::vec3 spawnPos = camera.GetPosition() + camera.GetFront() * 4.0f;
+
             if (ImGui::MenuItem("Sphere")) {
-                scene.addPrimitive(PrimitiveType::Sphere);
+                scene.addPrimitive(PrimitiveType::Sphere, spawnPos);
             }
             if (ImGui::MenuItem("Cylinder")) {
-                scene.addPrimitive(PrimitiveType::Cylinder);
+                scene.addPrimitive(PrimitiveType::Cylinder, spawnPos);
             }
             if (ImGui::MenuItem("Plane")) {
-                scene.addPrimitive(PrimitiveType::Plane);
+                scene.addPrimitive(PrimitiveType::Plane, spawnPos);
             }
             if (ImGui::MenuItem("Cube")) {
-                scene.addPrimitive(PrimitiveType::Cube);
+                scene.addPrimitive(PrimitiveType::Cube, spawnPos);
             }
             ImGui::EndPopup();
         }

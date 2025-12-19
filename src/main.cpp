@@ -201,7 +201,7 @@ int main() {
         scene.draw(view, projection, gCamera.GetPosition());
 
         hud.draw(gScreenWidth, gScreenHeight);
-        ui.draw(scene);
+        ui.draw(scene, gCamera);
         ui.render();
 
         glfwSwapBuffers(window);

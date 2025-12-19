@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 
 #include "scene.h"
+#include "camera.h"
 
 class UiLayer {
 public:
@@ -11,7 +12,7 @@ public:
 
     void init(GLFWwindow* window);
     void beginFrame();
-    void draw(SceneRenderer& scene);
+    void draw(SceneRenderer& scene, const Camera& camera);
     void render();
     void shutdown();
 

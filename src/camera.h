@@ -21,6 +21,7 @@ public:
 
     float GetSpeed() const { return MovementSpeed; }
     glm::vec3 GetPosition() const { return Position; }
+    glm::vec3 GetFront() const { return Front; }
 
 private:
     void updateVectors();
