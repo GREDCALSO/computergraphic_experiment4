@@ -26,6 +26,7 @@ namespace {
     bool gFirstDrag = true;
     double gLastX = 0.0;
     double gLastY = 0.0;
+    double gLastLeftClickTime = 0.0;
     glm::vec3 gDragPlaneNormal(0.0f, 1.0f, 0.0f);
     glm::vec3 gDragPlanePoint(0.0f);
     glm::vec3 gDragOffset(0.0f);
@@ -216,24 +217,42 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int /*mod
             double xpos = 0.0;
             double ypos = 0.0;
             glfwGetCursorPos(window, &xpos, &ypos);
+            const double now = glfwGetTime();
+            const bool isDoubleClick = (now - gLastLeftClickTime) < 0.25;
+            gLastLeftClickTime = now;
 
             if (ctx && ctx->scene) {
                 const int hit = pickInstance(xpos, ypos, *ctx->scene);
-                if (hit >= 0) {
-                    ctx->scene->select(hit);
-                }
 
-                if (ctx->ui && ctx->ui->getMode() == UiLayer::TransformMode::Translate && ctx->scene->getSelectedIndex() >= 0) {
-                    const PrimitiveInstance* inst = ctx->scene->getSelected();
-                    if (inst) {
-                        const glm::vec3 rayOrigin = gCamera.GetPosition();
-                        const glm::vec3 rayDir = screenRayDirection(xpos, ypos);
-                        gDragPlaneNormal = gCamera.GetFront();
-                        gDragPlanePoint = inst->position;
-                        glm::vec3 hitPoint;
-                        if (rayPlaneIntersection(rayOrigin, rayDir, gDragPlanePoint, gDragPlaneNormal, hitPoint)) {
-                            gDragOffset = inst->position - hitPoint;
-                            gDraggingObject = true;
+                if (isDoubleClick) {
+                    if (hit >= 0) {
+                        if (ctx->scene->getSelectedIndex() == hit) {
+                            ctx->scene->clearSelection();
+                            gDraggingObject = false;
+                        }
+                        else {
+                            ctx->scene->select(hit);
+                        }
+                    }
+                    else {
+                        ctx->scene->clearSelection();
+                        gDraggingObject = false;
+                    }
+                }
+                else {
+                    // single click: allow drag if already selected in translate mode
+                    if (ctx->ui && ctx->ui->getMode() == UiLayer::TransformMode::Translate && ctx->scene->getSelectedIndex() >= 0) {
+                        const PrimitiveInstance* inst = ctx->scene->getSelected();
+                        if (inst) {
+                            const glm::vec3 rayOrigin = gCamera.GetPosition();
+                            const glm::vec3 rayDir = screenRayDirection(xpos, ypos);
+                            gDragPlaneNormal = gCamera.GetFront();
+                            gDragPlanePoint = inst->position;
+                            glm::vec3 hitPoint;
+                            if (rayPlaneIntersection(rayOrigin, rayDir, gDragPlanePoint, gDragPlaneNormal, hitPoint)) {
+                                gDragOffset = inst->position - hitPoint;
+                                gDraggingObject = true;
+                            }
                         }
                     }
                 }

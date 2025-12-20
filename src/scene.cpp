@@ -75,7 +75,6 @@ void SceneRenderer::init() {
 void SceneRenderer::addPrimitive(PrimitiveType type, const glm::vec3& position) {
     ensureMesh(type);
     instances.push_back({ type, position, glm::vec3(1.0f), glm::vec3(0.0f) });
-    selectedIndex = static_cast<int>(instances.size()) - 1;
 }
 
 void SceneRenderer::clear() {

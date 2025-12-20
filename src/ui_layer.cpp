@@ -2,6 +2,7 @@
 #include "ui_layer.h"
 
 #include <cstdio>
+#include <algorithm>
 
 #include"Auth.h"
 
@@ -71,7 +72,7 @@ void UiLayer::draw(SceneRenderer& scene, const Camera& camera) {
         }
 
         ImGui::Separator();
-        ImGui::TextDisabled("R/F/T/G/Y/H Transform Axis\nLeft click to select, drag to translate, scroll wheel to adjust depth");
+        ImGui::TextDisabled("R/F/T/G/Y/H Transform Axis\nDouble-click left button to select/deselect, drag to pan\nMouse wheel adjusts depth");
     }
     ImGui::End();
 
@@ -83,6 +84,80 @@ void UiLayer::draw(SceneRenderer& scene, const Camera& camera) {
         ImGui::Text("Viewing Angle Movement Speed(Keyboard): %.2f", cameraSpeed);
     }
     ImGui::End();
+
+    // inspector panel (right)
+    const bool hasSelection = scene.getSelectedIndex() >= 0;
+    const float target = hasSelection ? 1.0f : 0.0f;
+    const float dt = io.DeltaTime;
+    const float speed = 6.0f;
+    const float alpha = std::clamp(dt * speed, 0.0f, 1.0f);
+    inspectorProgress = inspectorProgress + (target - inspectorProgress) * alpha;
+
+    const float sidebarWidth = 340.0f;
+    if (inspectorProgress > 0.01f) {
+        const float xPos = io.DisplaySize.x - sidebarWidth * inspectorProgress;
+        ImGui::SetNextWindowPos(ImVec2(xPos, 0.0f));
+        ImGui::SetNextWindowSize(ImVec2(sidebarWidth, io.DisplaySize.y));
+        ImGui::SetNextWindowBgAlpha(0.92f);
+
+        if (ImGui::Begin("Inspector", nullptr, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)) {
+            const PrimitiveInstance* inst = scene.getSelected();
+            if (inst) {
+                ImGui::Text("Entity Properties");
+                ImGui::Separator();
+                ImGui::Text("Type: %s", typeLabel(inst->type));
+
+                PrimitiveInstance* editable = scene.getSelectedMutable();
+                if (editable) {
+                    // Position
+                    ImGui::Separator();
+                    ImGui::Text("Position (X Y Z)");
+                    ImGui::SameLine();
+                    if (ImGui::Button("Reset##pos")) {
+                        editable->position = glm::vec3(0.0f);
+                    }
+                    float pos[3] = { editable->position.x, editable->position.y, editable->position.z };
+                    if (ImGui::InputFloat3("##pos", pos, "%.3f")) {
+                        editable->position = glm::vec3(pos[0], pos[1], pos[2]);
+                    }
+
+                    // Rotation
+                    ImGui::Separator();
+                    ImGui::Text("Rotation (Degrees)");
+                    ImGui::SameLine();
+                    if (ImGui::Button("Reset##rot")) {
+                        editable->rotation = glm::vec3(0.0f);
+                    }
+                    float rot[3] = { editable->rotation.x, editable->rotation.y, editable->rotation.z };
+                    if (ImGui::InputFloat3("##rot", rot, "%.2f")) {
+                        editable->rotation = glm::vec3(rot[0], rot[1], rot[2]);
+                    }
+
+                    // Scale
+                    ImGui::Separator();
+                    ImGui::Text("Scale (Multiplier)");
+                    ImGui::SameLine();
+                    if (ImGui::Button("Reset##scl")) {
+                        editable->scale = glm::vec3(1.0f);
+                        if (editable->type == PrimitiveType::Plane) { editable->scale.y = 1.0f; }
+                    }
+                    float scl[3] = { editable->scale.x, editable->scale.y, editable->scale.z };
+                    if (ImGui::InputFloat3("##scl", scl, "%.3f")) {
+                        glm::vec3 newScale(scl[0], scl[1], scl[2]);
+                        if (editable->type == PrimitiveType::Plane) {
+                            newScale.y = 1.0f; // keep plane height locked
+                        }
+                        newScale = glm::max(newScale, glm::vec3(0.1f));
+                        editable->scale = newScale;
+                    }
+
+                    ImGui::Dummy(ImVec2(0, 12));
+                    ImGui::TextDisabled("Reserved for Future: Material / Texture / Lighting");
+                }
+            }
+        }
+        ImGui::End();
+    }
 
     const float barHeight = 64.0f;
     ImGui::SetNextWindowPos(ImVec2(0.0f, io.DisplaySize.y - barHeight));

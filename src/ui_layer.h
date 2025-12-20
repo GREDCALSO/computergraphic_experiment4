@@ -30,4 +30,5 @@ private:
     bool initialized = false;
     TransformMode mode = TransformMode::Select;
     float cameraSpeed = 0.0f;
+    float inspectorProgress = 0.0f;
 };
