@@ -52,6 +52,9 @@ void SceneRenderer::init() {
         uniform float diffuseStrength;
         uniform float specularStrength;
         uniform float shininess;
+        uniform float matAmbientStrength;
+        uniform float matDiffuseStrength;
+        uniform float matSpecularStrength;
         uniform vec3 matAmbient;
         uniform vec3 matDiffuse;
         uniform vec3 matSpecular;
@@ -67,9 +70,9 @@ void SceneRenderer::init() {
             vec3 H = normalize(L + V);
             float spec = pow(max(dot(N, H), 0.0), shininess);
 
-            vec3 ambient = ambientStrength * lightColor * matAmbient;
-            vec3 diffuse = diffuseStrength * diff * lightColor * matDiffuse;
-            vec3 specular = specularStrength * spec * lightColor * matSpecular;
+            vec3 ambient = ambientStrength * matAmbientStrength * lightColor * matAmbient;
+            vec3 diffuse = diffuseStrength * matDiffuseStrength * diff * lightColor * matDiffuse;
+            vec3 specular = specularStrength * matSpecularStrength * spec * lightColor * matSpecular;
 
             FragColor = vec4(ambient + diffuse + specular, 1.0);
         }
@@ -83,10 +86,11 @@ void SceneRenderer::addPrimitive(PrimitiveType type, const glm::vec3& position) 
     ensureMesh(type);
     glm::vec3 amb, diff, spec;
     float shin = 32.0f;
-    getDefaultMaterial(amb, diff, spec, shin);
+    float ambStr = 1.0f, diffStr = 1.0f, specStr = 1.0f;
+    getDefaultMaterial(amb, diff, spec, shin, ambStr, diffStr, specStr);
     diff = colorForType(type);
     amb = diff * 0.2f;
-    instances.push_back({ type, position, glm::vec3(1.0f), glm::vec3(0.0f), diff, amb, diff, spec, shin });
+    instances.push_back({ type, position, glm::vec3(1.0f), glm::vec3(0.0f), diff, amb, diff, spec, shin, ambStr, diffStr, specStr });
 }
 
 void SceneRenderer::clear() {
@@ -127,6 +131,9 @@ void SceneRenderer::draw(const glm::mat4& view, const glm::mat4& projection, con
         litShader.setVec3("matAmbient", instance.matAmbient);
         litShader.setVec3("matDiffuse", instance.matDiffuse);
         litShader.setVec3("matSpecular", instance.matSpecular);
+        litShader.setFloat("matAmbientStrength", instance.matAmbientStrength);
+        litShader.setFloat("matDiffuseStrength", instance.matDiffuseStrength);
+        litShader.setFloat("matSpecularStrength", instance.matSpecularStrength);
         litShader.setFloat("shininess", instance.matShininess * light.shininess);
 
         glBindVertexArray(it->second.VAO);
@@ -141,6 +148,9 @@ void SceneRenderer::draw(const glm::mat4& view, const glm::mat4& projection, con
             litShader.setVec3("matAmbient", highlight * 0.25f);
             litShader.setVec3("matDiffuse", highlight);
             litShader.setVec3("matSpecular", glm::vec3(1.0f));
+            litShader.setFloat("matAmbientStrength", instance.matAmbientStrength);
+            litShader.setFloat("matDiffuseStrength", instance.matDiffuseStrength);
+            litShader.setFloat("matSpecularStrength", instance.matSpecularStrength);
             litShader.setFloat("shininess", instance.matShininess * light.shininess);
             glDrawElements(GL_TRIANGLES, it->second.indexCount, GL_UNSIGNED_INT, nullptr);
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -160,6 +170,9 @@ void SceneRenderer::draw(const glm::mat4& view, const glm::mat4& projection, con
         litShader.setVec3("matAmbient", light.color * 0.3f);
         litShader.setVec3("matDiffuse", light.color);
         litShader.setVec3("matSpecular", glm::vec3(1.0f));
+        litShader.setFloat("matAmbientStrength", 1.0f);
+        litShader.setFloat("matDiffuseStrength", 1.0f);
+        litShader.setFloat("matSpecularStrength", 1.0f);
         litShader.setFloat("shininess", 16.0f);
         glBindVertexArray(itLight->second.VAO);
         glDrawElements(GL_TRIANGLES, itLight->second.indexCount, GL_UNSIGNED_INT, nullptr);
@@ -440,11 +453,15 @@ glm::vec3 SceneRenderer::colorForType(PrimitiveType type) const {
     return glm::vec3(0.8f);
 }
 
-void SceneRenderer::getDefaultMaterial(glm::vec3& ambient, glm::vec3& diffuse, glm::vec3& specular, float& shininess) const {
+void SceneRenderer::getDefaultMaterial(glm::vec3& ambient, glm::vec3& diffuse, glm::vec3& specular, float& shininess,
+    float& ambientStrength, float& diffuseStrength, float& specularStrength) const {
     ambient = glm::vec3(0.2f);
     diffuse = glm::vec3(0.8f);
     specular = glm::vec3(0.5f);
     shininess = 32.0f;
+    ambientStrength = 1.0f;
+    diffuseStrength = 1.0f;
+    specularStrength = 1.0f;
 }
 
 void SceneRenderer::select(int index) {

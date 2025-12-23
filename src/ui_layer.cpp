@@ -171,17 +171,68 @@ void UiLayer::draw(SceneRenderer& scene, const Camera& camera) {
                     if (ImGui::Button("Reset##mat")) {
                         glm::vec3 amb, diff, spec;
                         float shin = 32.0f;
-                        scene.getDefaultMaterial(amb, diff, spec, shin);
+                        float ambStr = 1.0f, diffStr = 1.0f, specStr = 1.0f;
+                        scene.getDefaultMaterial(amb, diff, spec, shin, ambStr, diffStr, specStr);
                         diff = editable->color;
                         amb = diff * 0.2f;
                         editable->matAmbient = amb;
                         editable->matDiffuse = diff;
                         editable->matSpecular = spec;
                         editable->matShininess = shin;
+                        editable->matAmbientStrength = ambStr;
+                        editable->matDiffuseStrength = diffStr;
+                        editable->matSpecularStrength = specStr;
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Metal")) {
+                        editable->matAmbient = editable->color * 0.1f;
+                        editable->matDiffuse = editable->color * 0.6f;
+                        editable->matSpecular = glm::vec3(0.95f);
+                        editable->matAmbientStrength = 0.6f;
+                        editable->matDiffuseStrength = 0.9f;
+                        editable->matSpecularStrength = 1.5f;
+                        editable->matShininess = 96.0f;
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Plastic")) {
+                        editable->matAmbient = editable->color * 0.2f;
+                        editable->matDiffuse = editable->color;
+                        editable->matSpecular = glm::vec3(0.5f);
+                        editable->matAmbientStrength = 0.8f;
+                        editable->matDiffuseStrength = 1.0f;
+                        editable->matSpecularStrength = 0.9f;
+                        editable->matShininess = 48.0f;
+                    }
+                    if (ImGui::Button("Rubber")) {
+                        editable->matAmbient = editable->color * 0.4f;
+                        editable->matDiffuse = editable->color * 0.6f;
+                        editable->matSpecular = glm::vec3(0.1f);
+                        editable->matAmbientStrength = 1.2f;
+                        editable->matDiffuseStrength = 0.8f;
+                        editable->matSpecularStrength = 0.2f;
+                        editable->matShininess = 8.0f;
+                    }
+                    if (ImGui::Button("Default")) {
+                        glm::vec3 amb, diff, spec;
+                        float shin = 32.0f;
+                        float ambStr = 1.0f, diffStr = 1.0f, specStr = 1.0f;
+                        scene.getDefaultMaterial(amb, diff, spec, shin, ambStr, diffStr, specStr);
+                        diff = editable->color;
+                        amb = diff * 0.2f;
+                        editable->matAmbient = amb;
+                        editable->matDiffuse = diff;
+                        editable->matSpecular = spec;
+                        editable->matShininess = shin;
+                        editable->matAmbientStrength = ambStr;
+                        editable->matDiffuseStrength = diffStr;
+                        editable->matSpecularStrength = specStr;
                     }
                     ImGui::ColorEdit3("Ambient", reinterpret_cast<float*>(&editable->matAmbient));
+                    ImGui::SliderFloat("Ambient Strength", &editable->matAmbientStrength, 0.0f, 2.0f, "%.2f");
                     ImGui::ColorEdit3("Diffuse", reinterpret_cast<float*>(&editable->matDiffuse));
+                    ImGui::SliderFloat("Diffuse Strength", &editable->matDiffuseStrength, 0.0f, 2.0f, "%.2f");
                     ImGui::ColorEdit3("Specular", reinterpret_cast<float*>(&editable->matSpecular));
+                    ImGui::SliderFloat("Specular Strength", &editable->matSpecularStrength, 0.0f, 2.0f, "%.2f");
                     ImGui::SliderFloat("Shininess", &editable->matShininess, 1.0f, 256.0f, "%.0f");
 
                     ImGui::Dummy(ImVec2(0, 12));

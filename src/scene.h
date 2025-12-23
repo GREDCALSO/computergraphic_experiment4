@@ -25,6 +25,9 @@ struct PrimitiveInstance {
     glm::vec3 matDiffuse;
     glm::vec3 matSpecular;
     float matShininess;
+    float matAmbientStrength;
+    float matDiffuseStrength;
+    float matSpecularStrength;
 };
 
 struct LightSettings {
@@ -58,7 +61,8 @@ public:
     const PrimitiveInstance* getSelected() const;
 
     glm::vec3 getDefaultColor(PrimitiveType type) const { return colorForType(type); }
-    void getDefaultMaterial(glm::vec3& ambient, glm::vec3& diffuse, glm::vec3& specular, float& shininess) const;
+    void getDefaultMaterial(glm::vec3& ambient, glm::vec3& diffuse, glm::vec3& specular, float& shininess,
+        float& ambientStrength, float& diffuseStrength, float& specularStrength) const;
 
     LightSettings& getLightSettings() { return light; }
     const LightSettings& getLightSettings() const { return light; }
