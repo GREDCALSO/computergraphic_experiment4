@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 
 #include <map>
+#include <string>
 #include <vector>
 
 #include "shader.h"
@@ -13,6 +14,23 @@ enum class PrimitiveType {
     Sphere,
     Cylinder,
     Plane
+};
+
+enum class TextureWrapMode {
+    Repeat,
+    ClampToEdge,
+    MirroredRepeat
+};
+
+enum class TextureFilterMode {
+    Nearest,
+    Linear
+};
+
+enum class TextureProjection {
+    Planar,
+    Triplanar,
+    Spherical
 };
 
 struct PrimitiveInstance {
@@ -28,6 +46,13 @@ struct PrimitiveInstance {
     float matAmbientStrength;
     float matDiffuseStrength;
     float matSpecularStrength;
+    bool hasTexture = false;
+    GLuint textureId = 0;
+    std::string textureName;
+    TextureWrapMode wrapMode = TextureWrapMode::Repeat;
+    TextureFilterMode filterMode = TextureFilterMode::Linear;
+    TextureProjection projection = TextureProjection::Planar;
+    glm::vec2 uvScale = glm::vec2(1.0f);
 };
 
 struct LightSettings {
@@ -63,6 +88,9 @@ public:
     glm::vec3 getDefaultColor(PrimitiveType type) const { return colorForType(type); }
     void getDefaultMaterial(glm::vec3& ambient, glm::vec3& diffuse, glm::vec3& specular, float& shininess,
         float& ambientStrength, float& diffuseStrength, float& specularStrength) const;
+    bool loadTextureForSelected(const std::string& filepath);
+    void removeTextureFromSelected();
+    void applyTextureSettings(PrimitiveInstance& instance);
 
     LightSettings& getLightSettings() { return light; }
     const LightSettings& getLightSettings() const { return light; }

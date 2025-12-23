@@ -3,8 +3,35 @@
 
 #include <cstdio>
 #include <algorithm>
+#include <filesystem>
+#include <string>
+
+#define NOMINMAX
+#include <Windows.h>
+#include <commdlg.h>
 
 #include"Auth.h"
+
+namespace {
+    std::string OpenTextureFileDialog() {
+        char fileBuffer[MAX_PATH] = { 0 };
+        OPENFILENAMEA ofn{};
+        ofn.lStructSize = sizeof(ofn);
+        ofn.hwndOwner = nullptr;
+        ofn.lpstrFilter = "Image Files\0*.png;*.jpg;*.jpeg;*.bmp;*.tga;*.hdr\0All Files\0*.*\0";
+        ofn.nFilterIndex = 1;
+        ofn.lpstrFile = fileBuffer;
+        ofn.nMaxFile = MAX_PATH;
+        std::filesystem::path initial = std::filesystem::current_path() / "resources";
+        std::string initialStr = initial.string();
+        ofn.lpstrInitialDir = initialStr.c_str();
+        ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_EXPLORER;
+        if (GetOpenFileNameA(&ofn) == TRUE) {
+            return std::string(fileBuffer);
+        }
+        return {};
+    }
+}
 
 UiLayer::UiLayer() = default;
 UiLayer::~UiLayer() {
@@ -234,6 +261,50 @@ void UiLayer::draw(SceneRenderer& scene, const Camera& camera) {
                     ImGui::ColorEdit3("Specular", reinterpret_cast<float*>(&editable->matSpecular));
                     ImGui::SliderFloat("Specular Strength", &editable->matSpecularStrength, 0.0f, 2.0f, "%.2f");
                     ImGui::SliderFloat("Shininess", &editable->matShininess, 1.0f, 256.0f, "%.0f");
+
+                    ImGui::Separator();
+                    ImGui::Text("Texture");
+                    ImGui::SameLine();
+                    if (ImGui::Button("Load Texture")) {
+                        const std::string path = OpenTextureFileDialog();
+                        if (!path.empty()) {
+                            if (scene.loadTextureForSelected(path)) {
+                                ImGui::TextColored(ImVec4(0.6f, 1.0f, 0.6f, 1.0f), "%s loaded", std::filesystem::path(path).filename().string().c_str());
+                            }
+                        }
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Remove Texture")) {
+                        scene.removeTextureFromSelected();
+                    }
+                    if (editable->hasTexture) {
+                        ImGui::TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f), "%s loaded", editable->textureName.c_str());
+                    }
+                    else {
+                        ImGui::TextDisabled("No texture");
+                    }
+
+                    int wrapIdx = static_cast<int>(editable->wrapMode);
+                    const char* wrapItems[] = { "Repeat", "Clamp to Edge", "Mirrored Repeat" };
+                    if (ImGui::Combo("Wrap Mode", &wrapIdx, wrapItems, IM_ARRAYSIZE(wrapItems))) {
+                        editable->wrapMode = static_cast<TextureWrapMode>(wrapIdx);
+                        scene.applyTextureSettings(*editable);
+                    }
+
+                    int filterIdx = static_cast<int>(editable->filterMode);
+                    const char* filterItems[] = { "Nearest", "Linear" };
+                    if (ImGui::Combo("Filter Mode", &filterIdx, filterItems, IM_ARRAYSIZE(filterItems))) {
+                        editable->filterMode = static_cast<TextureFilterMode>(filterIdx);
+                        scene.applyTextureSettings(*editable);
+                    }
+
+                    int projIdx = static_cast<int>(editable->projection);
+                    const char* projItems[] = { "Planar", "Triplanar", "Spherical" };
+                    if (ImGui::Combo("Projection", &projIdx, projItems, IM_ARRAYSIZE(projItems))) {
+                        editable->projection = static_cast<TextureProjection>(projIdx);
+                    }
+
+                    ImGui::SliderFloat2("UV Scale", reinterpret_cast<float*>(&editable->uvScale), 0.1f, 8.0f, "%.2f");
 
                     ImGui::Dummy(ImVec2(0, 12));
                 }
