@@ -96,8 +96,9 @@ void UiLayer::draw(SceneRenderer& scene, const Camera& camera) {
     const float sidebarWidth = 340.0f;
     if (inspectorProgress > 0.01f) {
         const float xPos = io.DisplaySize.x - sidebarWidth * inspectorProgress;
-        ImGui::SetNextWindowPos(ImVec2(xPos, 0.0f));
-        ImGui::SetNextWindowSize(ImVec2(sidebarWidth, io.DisplaySize.y));
+        const float inspectorTop = 280.0f; // below light panel
+        ImGui::SetNextWindowPos(ImVec2(xPos, inspectorTop));
+        ImGui::SetNextWindowSize(ImVec2(sidebarWidth, io.DisplaySize.y - inspectorTop));
         ImGui::SetNextWindowBgAlpha(0.92f);
 
         if (ImGui::Begin("Inspector", nullptr, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)) {

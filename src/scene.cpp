@@ -141,7 +141,7 @@ void SceneRenderer::draw(const glm::mat4& view, const glm::mat4& projection, con
     if (itLight != meshes.end()) {
         glm::mat4 model(1.0f);
         model = glm::translate(model, light.position);
-        model = glm::scale(model, glm::vec3(0.2f));
+        model = glm::scale(model, glm::vec3(0.3f));
         litShader.setMat4("model", model);
         litShader.setVec3("objectColor", light.color);
         glBindVertexArray(itLight->second.VAO);

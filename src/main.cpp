@@ -208,7 +208,7 @@ bool pickLight(double xpos, double ypos, const SceneRenderer& scene) {
     const glm::vec3 rayDir = screenRayDirection(xpos, ypos);
     const glm::vec3 lightPos = scene.getLightSettings().position;
     float tHit = 0.0f;
-    return raySphereHit(rayOrigin, rayDir, lightPos, 0.4f, tHit);
+    return raySphereHit(rayOrigin, rayDir, lightPos, 0.6f, tHit);
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int /*mods*/) {
