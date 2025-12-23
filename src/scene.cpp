@@ -45,7 +45,6 @@ void SceneRenderer::init() {
         in vec3 vNormal;
         in vec3 vWorldPos;
 
-        uniform vec3 objectColor;
         uniform vec3 lightPos;
         uniform vec3 lightColor;
         uniform vec3 cameraPos;
@@ -53,6 +52,9 @@ void SceneRenderer::init() {
         uniform float diffuseStrength;
         uniform float specularStrength;
         uniform float shininess;
+        uniform vec3 matAmbient;
+        uniform vec3 matDiffuse;
+        uniform vec3 matSpecular;
 
         out vec4 FragColor;
 
@@ -65,9 +67,9 @@ void SceneRenderer::init() {
             vec3 H = normalize(L + V);
             float spec = pow(max(dot(N, H), 0.0), shininess);
 
-            vec3 ambient = ambientStrength * lightColor * objectColor;
-            vec3 diffuse = diffuseStrength * diff * lightColor * objectColor;
-            vec3 specular = specularStrength * spec * lightColor;
+            vec3 ambient = ambientStrength * lightColor * matAmbient;
+            vec3 diffuse = diffuseStrength * diff * lightColor * matDiffuse;
+            vec3 specular = specularStrength * spec * lightColor * matSpecular;
 
             FragColor = vec4(ambient + diffuse + specular, 1.0);
         }
@@ -79,7 +81,12 @@ void SceneRenderer::init() {
 
 void SceneRenderer::addPrimitive(PrimitiveType type, const glm::vec3& position) {
     ensureMesh(type);
-    instances.push_back({ type, position, glm::vec3(1.0f), glm::vec3(0.0f) });
+    glm::vec3 amb, diff, spec;
+    float shin = 32.0f;
+    getDefaultMaterial(amb, diff, spec, shin);
+    diff = colorForType(type);
+    amb = diff * 0.2f;
+    instances.push_back({ type, position, glm::vec3(1.0f), glm::vec3(0.0f), diff, amb, diff, spec, shin });
 }
 
 void SceneRenderer::clear() {
@@ -102,7 +109,7 @@ void SceneRenderer::draw(const glm::mat4& view, const glm::mat4& projection, con
     litShader.setFloat("ambientStrength", light.ambient);
     litShader.setFloat("diffuseStrength", light.diffuse);
     litShader.setFloat("specularStrength", light.specular);
-    litShader.setFloat("shininess", light.shininess);
+    // shininess will be set per-instance
 
     for (const auto& instance : instances) {
         const auto it = meshes.find(instance.type);
@@ -117,7 +124,10 @@ void SceneRenderer::draw(const glm::mat4& view, const glm::mat4& projection, con
         model = glm::rotate(model, glm::radians(instance.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
         model = glm::scale(model, instance.scale);
         litShader.setMat4("model", model);
-        litShader.setVec3("objectColor", colorForType(instance.type));
+        litShader.setVec3("matAmbient", instance.matAmbient);
+        litShader.setVec3("matDiffuse", instance.matDiffuse);
+        litShader.setVec3("matSpecular", instance.matSpecular);
+        litShader.setFloat("shininess", instance.matShininess * light.shininess);
 
         glBindVertexArray(it->second.VAO);
         glDrawElements(GL_TRIANGLES, it->second.indexCount, GL_UNSIGNED_INT, nullptr);
@@ -127,7 +137,11 @@ void SceneRenderer::draw(const glm::mat4& view, const glm::mat4& projection, con
             // draw outline in wireframe for selection highlight
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
             glLineWidth(2.0f);
-            litShader.setVec3("objectColor", glm::vec3(1.0f, 0.9f, 0.3f));
+            const glm::vec3 highlight(1.0f, 0.9f, 0.3f);
+            litShader.setVec3("matAmbient", highlight * 0.25f);
+            litShader.setVec3("matDiffuse", highlight);
+            litShader.setVec3("matSpecular", glm::vec3(1.0f));
+            litShader.setFloat("shininess", instance.matShininess * light.shininess);
             glDrawElements(GL_TRIANGLES, it->second.indexCount, GL_UNSIGNED_INT, nullptr);
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
@@ -143,7 +157,10 @@ void SceneRenderer::draw(const glm::mat4& view, const glm::mat4& projection, con
         model = glm::translate(model, light.position);
         model = glm::scale(model, glm::vec3(0.3f));
         litShader.setMat4("model", model);
-        litShader.setVec3("objectColor", light.color);
+        litShader.setVec3("matAmbient", light.color * 0.3f);
+        litShader.setVec3("matDiffuse", light.color);
+        litShader.setVec3("matSpecular", glm::vec3(1.0f));
+        litShader.setFloat("shininess", 16.0f);
         glBindVertexArray(itLight->second.VAO);
         glDrawElements(GL_TRIANGLES, itLight->second.indexCount, GL_UNSIGNED_INT, nullptr);
     }
@@ -421,6 +438,13 @@ glm::vec3 SceneRenderer::colorForType(PrimitiveType type) const {
         return glm::vec3(0.75f, 0.75f, 0.8f);
     }
     return glm::vec3(0.8f);
+}
+
+void SceneRenderer::getDefaultMaterial(glm::vec3& ambient, glm::vec3& diffuse, glm::vec3& specular, float& shininess) const {
+    ambient = glm::vec3(0.2f);
+    diffuse = glm::vec3(0.8f);
+    specular = glm::vec3(0.5f);
+    shininess = 32.0f;
 }
 
 void SceneRenderer::select(int index) {

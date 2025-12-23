@@ -20,6 +20,11 @@ struct PrimitiveInstance {
     glm::vec3 position;
     glm::vec3 scale;
     glm::vec3 rotation; // Euler degrees XYZ
+    glm::vec3 color;
+    glm::vec3 matAmbient;
+    glm::vec3 matDiffuse;
+    glm::vec3 matSpecular;
+    float matShininess;
 };
 
 struct LightSettings {
@@ -51,6 +56,9 @@ public:
     void setSelectedPosition(const glm::vec3& position);
     PrimitiveInstance* getSelectedMutable();
     const PrimitiveInstance* getSelected() const;
+
+    glm::vec3 getDefaultColor(PrimitiveType type) const { return colorForType(type); }
+    void getDefaultMaterial(glm::vec3& ambient, glm::vec3& diffuse, glm::vec3& specular, float& shininess) const;
 
     LightSettings& getLightSettings() { return light; }
     const LightSettings& getLightSettings() const { return light; }

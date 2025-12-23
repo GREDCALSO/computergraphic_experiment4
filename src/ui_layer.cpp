@@ -152,6 +152,38 @@ void UiLayer::draw(SceneRenderer& scene, const Camera& camera) {
                         editable->scale = newScale;
                     }
 
+                    // Color
+                    ImGui::Separator();
+                    ImGui::Text("Color");
+                    ImGui::SameLine();
+                    if (ImGui::Button("Reset##color")) {
+                        editable->color = scene.getDefaultColor(editable->type);
+                        editable->matDiffuse = editable->color;
+                        editable->matAmbient = editable->color * 0.2f;
+                    }
+                    if (ImGui::ColorEdit3("##color", reinterpret_cast<float*>(&editable->color))) {
+                        editable->matDiffuse = editable->color;
+                    }
+
+                    ImGui::Separator();
+                    ImGui::Text("Material");
+                    ImGui::SameLine();
+                    if (ImGui::Button("Reset##mat")) {
+                        glm::vec3 amb, diff, spec;
+                        float shin = 32.0f;
+                        scene.getDefaultMaterial(amb, diff, spec, shin);
+                        diff = editable->color;
+                        amb = diff * 0.2f;
+                        editable->matAmbient = amb;
+                        editable->matDiffuse = diff;
+                        editable->matSpecular = spec;
+                        editable->matShininess = shin;
+                    }
+                    ImGui::ColorEdit3("Ambient", reinterpret_cast<float*>(&editable->matAmbient));
+                    ImGui::ColorEdit3("Diffuse", reinterpret_cast<float*>(&editable->matDiffuse));
+                    ImGui::ColorEdit3("Specular", reinterpret_cast<float*>(&editable->matSpecular));
+                    ImGui::SliderFloat("Shininess", &editable->matShininess, 1.0f, 256.0f, "%.0f");
+
                     ImGui::Dummy(ImVec2(0, 12));
                 }
             }
