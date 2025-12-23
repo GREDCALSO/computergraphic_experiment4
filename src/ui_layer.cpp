@@ -152,7 +152,34 @@ void UiLayer::draw(SceneRenderer& scene, const Camera& camera) {
                     }
 
                     ImGui::Dummy(ImVec2(0, 12));
-                    ImGui::TextDisabled("Reserved for Future: Material / Texture / Lighting");
+                    ImGui::Separator();
+                    ImGui::Text("Lighting");
+
+                    LightSettings& light = scene.getLightSettings();
+
+                    ImGui::Text("Light Position");
+                    ImGui::SameLine();
+                    if (ImGui::Button("Reset##lightpos")) {
+                        light.position = glm::vec3(-2.0f, 4.0f, 2.0f);
+                    }
+                    float lpos[3] = { light.position.x, light.position.y, light.position.z };
+                    if (ImGui::InputFloat3("##lightpos", lpos, "%.3f")) {
+                        light.position = glm::vec3(lpos[0], lpos[1], lpos[2]);
+                    }
+
+                    ImGui::Separator();
+                    ImGui::Text("Light Intensities");
+                    const float minI = 0.0f, maxI = 2.0f;
+                    if (ImGui::SliderFloat("Ambient", &light.ambient, minI, maxI, "%.2f")) {}
+                    if (ImGui::SliderFloat("Diffuse", &light.diffuse, minI, maxI, "%.2f")) {}
+                    if (ImGui::SliderFloat("Specular", &light.specular, minI, maxI, "%.2f")) {}
+                    if (ImGui::SliderFloat("Shininess", &light.shininess, 1.0f, 128.0f, "%.0f")) {}
+                    if (ImGui::Button("Reset##light")) {
+                        light.ambient = 0.15f;
+                        light.diffuse = 0.75f;
+                        light.specular = 0.25f;
+                        light.shininess = 32.0f;
+                    }
                 }
             }
         }

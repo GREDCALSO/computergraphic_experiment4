@@ -46,23 +46,27 @@ void SceneRenderer::init() {
         in vec3 vWorldPos;
 
         uniform vec3 objectColor;
-        uniform vec3 lightDir;
+        uniform vec3 lightPos;
         uniform vec3 cameraPos;
+        uniform float ambientStrength;
+        uniform float diffuseStrength;
+        uniform float specularStrength;
+        uniform float shininess;
 
         out vec4 FragColor;
 
         void main() {
             vec3 N = normalize(vNormal);
-            vec3 L = normalize(-lightDir);
+            vec3 L = normalize(lightPos - vWorldPos);
             float diff = max(dot(N, L), 0.0);
 
             vec3 V = normalize(cameraPos - vWorldPos);
             vec3 H = normalize(L + V);
-            float spec = pow(max(dot(N, H), 0.0), 32.0);
+            float spec = pow(max(dot(N, H), 0.0), shininess);
 
-            vec3 ambient = 0.15 * objectColor;
-            vec3 diffuse = 0.75 * diff * objectColor;
-            vec3 specular = 0.25 * spec * vec3(1.0);
+            vec3 ambient = ambientStrength * objectColor;
+            vec3 diffuse = diffuseStrength * diff * objectColor;
+            vec3 specular = specularStrength * spec * vec3(1.0);
 
             FragColor = vec4(ambient + diffuse + specular, 1.0);
         }
@@ -92,8 +96,11 @@ void SceneRenderer::draw(const glm::mat4& view, const glm::mat4& projection, con
     litShader.setMat4("projection", projection);
     litShader.setVec3("cameraPos", cameraPos);
 
-    const glm::vec3 lightDir = glm::normalize(glm::vec3(-0.4f, -1.0f, -0.3f));
-    litShader.setVec3("lightDir", lightDir);
+    litShader.setVec3("lightPos", light.position);
+    litShader.setFloat("ambientStrength", light.ambient);
+    litShader.setFloat("diffuseStrength", light.diffuse);
+    litShader.setFloat("specularStrength", light.specular);
+    litShader.setFloat("shininess", light.shininess);
 
     for (const auto& instance : instances) {
         const auto it = meshes.find(instance.type);

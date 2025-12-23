@@ -22,6 +22,14 @@ struct PrimitiveInstance {
     glm::vec3 rotation; // Euler degrees XYZ
 };
 
+struct LightSettings {
+    glm::vec3 position = glm::vec3(-2.0f, 4.0f, 2.0f);
+    float ambient = 0.15f;
+    float diffuse = 0.75f;
+    float specular = 0.25f;
+    float shininess = 32.0f;
+};
+
 class SceneRenderer {
 public:
     SceneRenderer();
@@ -42,6 +50,9 @@ public:
     void setSelectedPosition(const glm::vec3& position);
     PrimitiveInstance* getSelectedMutable();
     const PrimitiveInstance* getSelected() const;
+
+    LightSettings& getLightSettings() { return light; }
+    const LightSettings& getLightSettings() const { return light; }
 
 private:
     struct Mesh {
@@ -66,4 +77,5 @@ private:
     std::map<PrimitiveType, Mesh> meshes;
     std::vector<PrimitiveInstance> instances;
     int selectedIndex = -1;
+    LightSettings light;
 };

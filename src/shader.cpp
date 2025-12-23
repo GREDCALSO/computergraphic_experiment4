@@ -39,6 +39,11 @@ void Shader::setVec3(const std::string& name, const glm::vec3& value) const {
     glUniform3fv(loc, 1, glm::value_ptr(value));
 }
 
+void Shader::setFloat(const std::string& name, float value) const {
+    const GLint loc = glGetUniformLocation(programId, name.c_str());
+    glUniform1f(loc, value);
+}
+
 GLuint Shader::compile(GLenum type, const char* source) {
     GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, &source, nullptr);
