@@ -30,7 +30,9 @@ enum class TextureFilterMode {
 enum class TextureProjection {
     Planar,
     Triplanar,
-    Spherical
+    Spherical,
+    Cylindrical,
+    Cube
 };
 
 struct PrimitiveInstance {

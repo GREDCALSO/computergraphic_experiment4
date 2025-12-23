@@ -109,12 +109,28 @@ void SceneRenderer::init() {
                 } else {
                     uv = worldPos.xy;
                 }
-            } else {
+            } else if (projectionMode == 2) {
                 // Spherical projection
                 vec3 p = normalize(worldPos);
                 float u = atan(p.z, p.x) / (2.0 * 3.1415926) + 0.5;
                 float v = asin(clamp(p.y, -1.0, 1.0)) / 3.1415926 + 0.5;
                 uv = vec2(u, v);
+            } else if (projectionMode == 3) {
+                // Cylindrical projection around Y axis
+                float theta = atan(worldPos.z, worldPos.x);
+                float u = theta / (2.0 * 3.1415926) + 0.5;
+                float v = worldPos.y * 0.5 + 0.5;
+                uv = vec2(u, v);
+            } else {
+                // Cube projection using dominant axis (box mapping)
+                vec3 an = abs(normal);
+                if (an.x >= an.y && an.x >= an.z) {
+                    uv = vec2(worldPos.z, worldPos.y);
+                } else if (an.y >= an.x && an.y >= an.z) {
+                    uv = vec2(worldPos.x, worldPos.z);
+                } else {
+                    uv = vec2(worldPos.x, worldPos.y);
+                }
             }
             return uv * uvScale;
         }

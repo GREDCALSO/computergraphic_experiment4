@@ -299,7 +299,7 @@ void UiLayer::draw(SceneRenderer& scene, const Camera& camera) {
                     }
 
                     int projIdx = static_cast<int>(editable->projection);
-                    const char* projItems[] = { "Planar", "Triplanar", "Spherical" };
+                    const char* projItems[] = { "Planar", "Triplanar", "Spherical", "Cylindrical", "Cube" };
                     if (ImGui::Combo("Projection", &projIdx, projItems, IM_ARRAYSIZE(projItems))) {
                         editable->projection = static_cast<TextureProjection>(projIdx);
                     }
