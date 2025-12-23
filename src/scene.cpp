@@ -675,6 +675,19 @@ void SceneRenderer::setSelectedPosition(const glm::vec3& position) {
     instances[static_cast<size_t>(selectedIndex)].position = position;
 }
 
+void SceneRenderer::removeSelected() {
+    if (selectedIndex < 0 || selectedIndex >= static_cast<int>(instances.size())) {
+        return;
+    }
+    PrimitiveInstance& inst = instances[static_cast<size_t>(selectedIndex)];
+    if (inst.textureId) {
+        glDeleteTextures(1, &inst.textureId);
+        inst.textureId = 0;
+    }
+    instances.erase(instances.begin() + selectedIndex);
+    selectedIndex = -1;
+}
+
 PrimitiveInstance* SceneRenderer::getSelectedMutable() {
     if (selectedIndex < 0 || selectedIndex >= static_cast<int>(instances.size())) {
         return nullptr;

@@ -82,6 +82,7 @@ public:
     void rotateSelected(const glm::vec3& deltaDegrees);
     void scaleSelected(const glm::vec3& deltaScale);
     void setSelectedPosition(const glm::vec3& position);
+    void removeSelected();
     PrimitiveInstance* getSelectedMutable();
     const PrimitiveInstance* getSelected() const;
 

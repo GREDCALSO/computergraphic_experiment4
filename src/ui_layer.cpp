@@ -304,7 +304,13 @@ void UiLayer::draw(SceneRenderer& scene, const Camera& camera) {
                         editable->projection = static_cast<TextureProjection>(projIdx);
                     }
 
-                    ImGui::SliderFloat2("UV Scale", reinterpret_cast<float*>(&editable->uvScale), 0.1f, 8.0f, "%.2f");
+                    ImGui::InputFloat2("UV Scale", reinterpret_cast<float*>(&editable->uvScale), "%.3f");
+                    ImGui::SliderFloat2("UV Scale Slider", reinterpret_cast<float*>(&editable->uvScale), 0.1f, 8.0f, "%.2f");
+
+                    ImGui::Separator();
+                    if (ImGui::Button("Delete Entity")) {
+                        scene.removeSelected();
+                    }
 
                     ImGui::Dummy(ImVec2(0, 12));
                 }
