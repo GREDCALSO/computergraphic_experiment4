@@ -89,6 +89,7 @@ void SceneRenderer::init() {
         uniform vec3 matSpecular;
         uniform bool useTexture;
         uniform int projectionMode;
+        uniform int planarAxis;
         uniform vec2 uvScale;
         uniform sampler2D diffuseTex;
 
@@ -97,8 +98,14 @@ void SceneRenderer::init() {
         vec2 computeUV(vec3 worldPos, vec3 normal) {
             vec2 uv = vec2(0.0);
             if (projectionMode == 0) {
-                // Planar projection on XZ
-                uv = worldPos.xz;
+                // Planar with selectable axis
+                if (planarAxis == 0) {
+                    uv = worldPos.zy; // project onto YZ (normal along X)
+                } else if (planarAxis == 1) {
+                    uv = worldPos.xz; // project onto XZ (normal along Y)
+                } else {
+                    uv = worldPos.xy; // project onto XY (normal along Z)
+                }
             } else if (projectionMode == 1) {
                 // Triplanar projection based on dominant normal axis
                 vec3 an = abs(normal);
@@ -193,6 +200,7 @@ void SceneRenderer::addPrimitive(PrimitiveType type, const glm::vec3& position) 
     inst.wrapMode = TextureWrapMode::Repeat;
     inst.filterMode = TextureFilterMode::Linear;
     inst.projection = TextureProjection::Planar;
+    inst.planarAxis = PlanarAxis::Y;
     inst.uvScale = glm::vec2(1.0f);
     instances.push_back(inst);
 }
@@ -247,6 +255,7 @@ void SceneRenderer::draw(const glm::mat4& view, const glm::mat4& projection, con
         litShader.setFloat("shininess", instance.matShininess * light.shininess);
         litShader.setInt("useTexture", instance.hasTexture && instance.textureId ? 1 : 0);
         litShader.setInt("projectionMode", static_cast<int>(instance.projection));
+        litShader.setInt("planarAxis", static_cast<int>(instance.planarAxis));
         litShader.setVec2("uvScale", instance.uvScale);
 
         if (instance.hasTexture && instance.textureId) {
@@ -299,6 +308,7 @@ void SceneRenderer::draw(const glm::mat4& view, const glm::mat4& projection, con
         litShader.setFloat("shininess", 16.0f);
         litShader.setInt("useTexture", 0);
         litShader.setInt("projectionMode", 0);
+        litShader.setInt("planarAxis", 1);
         litShader.setVec2("uvScale", glm::vec2(1.0f));
         glBindVertexArray(itLight->second.VAO);
         glDrawElements(GL_TRIANGLES, itLight->second.indexCount, GL_UNSIGNED_INT, nullptr);

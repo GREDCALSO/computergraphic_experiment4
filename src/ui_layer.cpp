@@ -304,6 +304,14 @@ void UiLayer::draw(SceneRenderer& scene, const Camera& camera) {
                         editable->projection = static_cast<TextureProjection>(projIdx);
                     }
 
+                    if (editable->projection == TextureProjection::Planar) {
+                        int axisIdx = static_cast<int>(editable->planarAxis);
+                        const char* axisItems[] = { "Normal X", "Normal Y", "Normal Z" };
+                        if (ImGui::Combo("Planar Axis", &axisIdx, axisItems, IM_ARRAYSIZE(axisItems))) {
+                            editable->planarAxis = static_cast<PlanarAxis>(axisIdx);
+                        }
+                    }
+
                     ImGui::InputFloat2("UV Scale", reinterpret_cast<float*>(&editable->uvScale), "%.3f");
                     ImGui::SliderFloat2("UV Scale Slider", reinterpret_cast<float*>(&editable->uvScale), 0.1f, 8.0f, "%.2f");
 

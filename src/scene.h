@@ -16,6 +16,12 @@ enum class PrimitiveType {
     Plane
 };
 
+enum class PlanarAxis {
+    X,
+    Y,
+    Z
+};
+
 enum class TextureWrapMode {
     Repeat,
     ClampToEdge,
@@ -54,6 +60,7 @@ struct PrimitiveInstance {
     TextureWrapMode wrapMode = TextureWrapMode::Repeat;
     TextureFilterMode filterMode = TextureFilterMode::Linear;
     TextureProjection projection = TextureProjection::Planar;
+    PlanarAxis planarAxis = PlanarAxis::Y;
     glm::vec2 uvScale = glm::vec2(1.0f);
 };
 
