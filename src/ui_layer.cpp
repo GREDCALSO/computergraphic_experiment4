@@ -152,39 +152,55 @@ void UiLayer::draw(SceneRenderer& scene, const Camera& camera) {
                     }
 
                     ImGui::Dummy(ImVec2(0, 12));
-                    ImGui::Separator();
-                    ImGui::Text("Lighting");
-
-                    LightSettings& light = scene.getLightSettings();
-
-                    ImGui::Text("Light Position");
-                    ImGui::SameLine();
-                    if (ImGui::Button("Reset##lightpos")) {
-                        light.position = glm::vec3(-2.0f, 4.0f, 2.0f);
-                    }
-                    float lpos[3] = { light.position.x, light.position.y, light.position.z };
-                    if (ImGui::InputFloat3("##lightpos", lpos, "%.3f")) {
-                        light.position = glm::vec3(lpos[0], lpos[1], lpos[2]);
-                    }
-
-                    ImGui::Separator();
-                    ImGui::Text("Light Intensities");
-                    const float minI = 0.0f, maxI = 2.0f;
-                    if (ImGui::SliderFloat("Ambient", &light.ambient, minI, maxI, "%.2f")) {}
-                    if (ImGui::SliderFloat("Diffuse", &light.diffuse, minI, maxI, "%.2f")) {}
-                    if (ImGui::SliderFloat("Specular", &light.specular, minI, maxI, "%.2f")) {}
-                    if (ImGui::SliderFloat("Shininess", &light.shininess, 1.0f, 128.0f, "%.0f")) {}
-                    if (ImGui::Button("Reset##light")) {
-                        light.ambient = 0.15f;
-                        light.diffuse = 0.75f;
-                        light.specular = 0.25f;
-                        light.shininess = 32.0f;
-                    }
                 }
             }
         }
         ImGui::End();
     }
+
+    // light panel (independent)
+    const float lightWidth = 320.0f;
+    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - lightWidth - 12.0f, 12.0f));
+    ImGui::SetNextWindowSize(ImVec2(lightWidth, 260.0f), ImGuiCond_Appearing);
+    ImGui::SetNextWindowBgAlpha(0.9f);
+    if (ImGui::Begin("Light", nullptr, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse)) {
+        LightSettings& light = scene.getLightSettings();
+
+        ImGui::Text("Light Controls");
+        ImGui::Separator();
+
+        ImGui::Text("Position");
+        ImGui::SameLine();
+        if (ImGui::Button("Reset##lightpos")) {
+            light.position = glm::vec3(-2.0f, 4.0f, 2.0f);
+        }
+        float lpos[3] = { light.position.x, light.position.y, light.position.z };
+        if (ImGui::InputFloat3("##lightpos", lpos, "%.3f")) {
+            light.position = glm::vec3(lpos[0], lpos[1], lpos[2]);
+        }
+
+        ImGui::Text("Color");
+        ImGui::SameLine();
+        if (ImGui::Button("Reset##lightcol")) {
+            light.color = glm::vec3(1.0f);
+        }
+        ImGui::ColorEdit3("##lightcolor", reinterpret_cast<float*>(&light.color));
+
+        ImGui::Separator();
+        ImGui::Text("Intensities");
+        const float minI = 0.0f, maxI = 2.0f;
+        ImGui::SliderFloat("Ambient", &light.ambient, minI, maxI, "%.2f");
+        ImGui::SliderFloat("Diffuse", &light.diffuse, minI, maxI, "%.2f");
+        ImGui::SliderFloat("Specular", &light.specular, minI, maxI, "%.2f");
+        ImGui::SliderFloat("Shininess", &light.shininess, 1.0f, 128.0f, "%.0f");
+        if (ImGui::Button("Reset##light")) {
+            light.ambient = 0.15f;
+            light.diffuse = 0.75f;
+            light.specular = 0.25f;
+            light.shininess = 32.0f;
+        }
+    }
+    ImGui::End();
 
     const float barHeight = 64.0f;
     ImGui::SetNextWindowPos(ImVec2(0.0f, io.DisplaySize.y - barHeight));

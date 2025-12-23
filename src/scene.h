@@ -24,6 +24,7 @@ struct PrimitiveInstance {
 
 struct LightSettings {
     glm::vec3 position = glm::vec3(-2.0f, 4.0f, 2.0f);
+    glm::vec3 color = glm::vec3(1.0f);
     float ambient = 0.15f;
     float diffuse = 0.75f;
     float specular = 0.25f;

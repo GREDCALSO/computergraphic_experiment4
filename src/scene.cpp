@@ -47,6 +47,7 @@ void SceneRenderer::init() {
 
         uniform vec3 objectColor;
         uniform vec3 lightPos;
+        uniform vec3 lightColor;
         uniform vec3 cameraPos;
         uniform float ambientStrength;
         uniform float diffuseStrength;
@@ -64,9 +65,9 @@ void SceneRenderer::init() {
             vec3 H = normalize(L + V);
             float spec = pow(max(dot(N, H), 0.0), shininess);
 
-            vec3 ambient = ambientStrength * objectColor;
-            vec3 diffuse = diffuseStrength * diff * objectColor;
-            vec3 specular = specularStrength * spec * vec3(1.0);
+            vec3 ambient = ambientStrength * lightColor * objectColor;
+            vec3 diffuse = diffuseStrength * diff * lightColor * objectColor;
+            vec3 specular = specularStrength * spec * lightColor;
 
             FragColor = vec4(ambient + diffuse + specular, 1.0);
         }
@@ -97,6 +98,7 @@ void SceneRenderer::draw(const glm::mat4& view, const glm::mat4& projection, con
     litShader.setVec3("cameraPos", cameraPos);
 
     litShader.setVec3("lightPos", light.position);
+    litShader.setVec3("lightColor", light.color);
     litShader.setFloat("ambientStrength", light.ambient);
     litShader.setFloat("diffuseStrength", light.diffuse);
     litShader.setFloat("specularStrength", light.specular);
@@ -132,6 +134,19 @@ void SceneRenderer::draw(const glm::mat4& view, const glm::mat4& projection, con
     }
 
     glBindVertexArray(0);
+
+    // draw light indicator
+    ensureMesh(PrimitiveType::Cube);
+    const auto itLight = meshes.find(PrimitiveType::Cube);
+    if (itLight != meshes.end()) {
+        glm::mat4 model(1.0f);
+        model = glm::translate(model, light.position);
+        model = glm::scale(model, glm::vec3(0.2f));
+        litShader.setMat4("model", model);
+        litShader.setVec3("objectColor", light.color);
+        glBindVertexArray(itLight->second.VAO);
+        glDrawElements(GL_TRIANGLES, itLight->second.indexCount, GL_UNSIGNED_INT, nullptr);
+    }
 }
 
 SceneRenderer::Mesh SceneRenderer::buildCube() {

@@ -23,6 +23,7 @@ namespace {
     bool gRightMouseDown = false;
     bool gLeftMouseDown = false;
     bool gDraggingObject = false;
+    bool gLightSelected = false;
     bool gFirstDrag = true;
     double gLastX = 0.0;
     double gLastY = 0.0;
@@ -135,10 +136,16 @@ void scroll_callback(GLFWwindow* window, double /*xoffset*/, double yoffset) {
         return;
     }
 
-    if (ctx && ctx->scene && ctx->ui && ctx->ui->getMode() == UiLayer::TransformMode::Translate && ctx->scene->getSelectedIndex() >= 0) {
+    if (ctx && ctx->scene && ctx->ui && ctx->ui->getMode() == UiLayer::TransformMode::Translate) {
         const float depthStep = 0.25f * static_cast<float>(yoffset);
-        ctx->scene->translateSelected(gCamera.GetFront() * depthStep);
-        return;
+        if (gLightSelected) {
+            ctx->scene->getLightSettings().position += gCamera.GetFront() * depthStep;
+            return;
+        }
+        if (ctx->scene->getSelectedIndex() >= 0) {
+            ctx->scene->translateSelected(gCamera.GetFront() * depthStep);
+            return;
+        }
     }
 
     if (gRightMouseDown) {
@@ -163,12 +170,17 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
         return;
     }
 
-    if (gDraggingObject && ctx && ctx->scene && ctx->ui && ctx->ui->getMode() == UiLayer::TransformMode::Translate && ctx->scene->getSelectedIndex() >= 0) {
+    if (gDraggingObject && ctx && ctx->scene && ctx->ui && ctx->ui->getMode() == UiLayer::TransformMode::Translate) {
         const glm::vec3 rayOrigin = gCamera.GetPosition();
         const glm::vec3 rayDir = screenRayDirection(xpos, ypos);
         glm::vec3 hit;
         if (rayPlaneIntersection(rayOrigin, rayDir, gDragPlanePoint, gDragPlaneNormal, hit)) {
-            ctx->scene->setSelectedPosition(hit + gDragOffset);
+            if (gLightSelected) {
+                ctx->scene->getLightSettings().position = hit + gDragOffset;
+            }
+            else if (ctx->scene->getSelectedIndex() >= 0) {
+                ctx->scene->setSelectedPosition(hit + gDragOffset);
+            }
         }
     }
 
@@ -189,6 +201,14 @@ void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
     gLastY = ypos;
 
     gCamera.ProcessMouseMovement(static_cast<float>(xoffset), static_cast<float>(yoffset));
+}
+
+bool pickLight(double xpos, double ypos, const SceneRenderer& scene) {
+    const glm::vec3 rayOrigin = gCamera.GetPosition();
+    const glm::vec3 rayDir = screenRayDirection(xpos, ypos);
+    const glm::vec3 lightPos = scene.getLightSettings().position;
+    float tHit = 0.0f;
+    return raySphereHit(rayOrigin, rayDir, lightPos, 0.4f, tHit);
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int /*mods*/) {
@@ -223,9 +243,11 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int /*mod
 
             if (ctx && ctx->scene) {
                 const int hit = pickInstance(xpos, ypos, *ctx->scene);
+                const bool lightHit = pickLight(xpos, ypos, *ctx->scene);
 
                 if (isDoubleClick) {
                     if (hit >= 0) {
+                        gLightSelected = false;
                         if (ctx->scene->getSelectedIndex() == hit) {
                             ctx->scene->clearSelection();
                             gDraggingObject = false;
@@ -234,23 +256,42 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int /*mod
                             ctx->scene->select(hit);
                         }
                     }
+                    else if (lightHit) {
+                        ctx->scene->clearSelection();
+                        gLightSelected = !gLightSelected;
+                        gDraggingObject = false;
+                    }
                     else {
                         ctx->scene->clearSelection();
+                        gLightSelected = false;
                         gDraggingObject = false;
                     }
                 }
                 else {
                     // single click: allow drag if already selected in translate mode
-                    if (ctx->ui && ctx->ui->getMode() == UiLayer::TransformMode::Translate && ctx->scene->getSelectedIndex() >= 0) {
-                        const PrimitiveInstance* inst = ctx->scene->getSelected();
-                        if (inst) {
+                    if (ctx->ui && ctx->ui->getMode() == UiLayer::TransformMode::Translate) {
+                        if (ctx->scene->getSelectedIndex() >= 0 && !gLightSelected) {
+                            const PrimitiveInstance* inst = ctx->scene->getSelected();
+                            if (inst) {
+                                const glm::vec3 rayOrigin = gCamera.GetPosition();
+                                const glm::vec3 rayDir = screenRayDirection(xpos, ypos);
+                                gDragPlaneNormal = gCamera.GetFront();
+                                gDragPlanePoint = inst->position;
+                                glm::vec3 hitPoint;
+                                if (rayPlaneIntersection(rayOrigin, rayDir, gDragPlanePoint, gDragPlaneNormal, hitPoint)) {
+                                    gDragOffset = inst->position - hitPoint;
+                                    gDraggingObject = true;
+                                }
+                            }
+                        }
+                        else if (gLightSelected) {
                             const glm::vec3 rayOrigin = gCamera.GetPosition();
                             const glm::vec3 rayDir = screenRayDirection(xpos, ypos);
                             gDragPlaneNormal = gCamera.GetFront();
-                            gDragPlanePoint = inst->position;
+                            gDragPlanePoint = ctx->scene->getLightSettings().position;
                             glm::vec3 hitPoint;
                             if (rayPlaneIntersection(rayOrigin, rayDir, gDragPlanePoint, gDragPlaneNormal, hitPoint)) {
-                                gDragOffset = inst->position - hitPoint;
+                                gDragOffset = ctx->scene->getLightSettings().position - hitPoint;
                                 gDraggingObject = true;
                             }
                         }
@@ -293,7 +334,7 @@ void processInput(GLFWwindow* window, float deltaTime, SceneRenderer& scene, UiL
 
     // transforms regardless of RMB
     const int selected = scene.getSelectedIndex();
-    const bool hasSelection = selected >= 0;
+    const bool hasSelection = selected >= 0 || gLightSelected;
     const float moveStep = 0.01f;
     const float rotStep = 1.0f;
     const float scaleStep = 0.01f;
@@ -301,28 +342,43 @@ void processInput(GLFWwindow* window, float deltaTime, SceneRenderer& scene, UiL
     if (hasSelection) {
         switch (ui.getMode()) {
         case UiLayer::TransformMode::Translate:
-            if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) scene.translateSelected(glm::vec3(moveStep, 0.0f, 0.0f));
-            if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) scene.translateSelected(glm::vec3(-moveStep, 0.0f, 0.0f));
-            if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS) scene.translateSelected(glm::vec3(0.0f, moveStep, 0.0f));
-            if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS) scene.translateSelected(glm::vec3(0.0f, -moveStep, 0.0f));
-            if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS) scene.translateSelected(glm::vec3(0.0f, 0.0f, moveStep));
-            if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS) scene.translateSelected(glm::vec3(0.0f, 0.0f, -moveStep));
+            if (gLightSelected) {
+                auto& light = scene.getLightSettings();
+                if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) light.position += glm::vec3(moveStep, 0.0f, 0.0f);
+                if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) light.position += glm::vec3(-moveStep, 0.0f, 0.0f);
+                if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS) light.position += glm::vec3(0.0f, moveStep, 0.0f);
+                if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS) light.position += glm::vec3(0.0f, -moveStep, 0.0f);
+                if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS) light.position += glm::vec3(0.0f, 0.0f, moveStep);
+                if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS) light.position += glm::vec3(0.0f, 0.0f, -moveStep);
+            }
+            else {
+                if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) scene.translateSelected(glm::vec3(moveStep, 0.0f, 0.0f));
+                if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) scene.translateSelected(glm::vec3(-moveStep, 0.0f, 0.0f));
+                if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS) scene.translateSelected(glm::vec3(0.0f, moveStep, 0.0f));
+                if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS) scene.translateSelected(glm::vec3(0.0f, -moveStep, 0.0f));
+                if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS) scene.translateSelected(glm::vec3(0.0f, 0.0f, moveStep));
+                if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS) scene.translateSelected(glm::vec3(0.0f, 0.0f, -moveStep));
+            }
             break;
         case UiLayer::TransformMode::Rotate:
-            if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) scene.rotateSelected(glm::vec3(rotStep, 0.0f, 0.0f));
-            if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) scene.rotateSelected(glm::vec3(-rotStep, 0.0f, 0.0f));
-            if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS) scene.rotateSelected(glm::vec3(0.0f, rotStep, 0.0f));
-            if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS) scene.rotateSelected(glm::vec3(0.0f, -rotStep, 0.0f));
-            if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS) scene.rotateSelected(glm::vec3(0.0f, 0.0f, rotStep));
-            if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS) scene.rotateSelected(glm::vec3(0.0f, 0.0f, -rotStep));
+            if (!gLightSelected) {
+                if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) scene.rotateSelected(glm::vec3(rotStep, 0.0f, 0.0f));
+                if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) scene.rotateSelected(glm::vec3(-rotStep, 0.0f, 0.0f));
+                if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS) scene.rotateSelected(glm::vec3(0.0f, rotStep, 0.0f));
+                if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS) scene.rotateSelected(glm::vec3(0.0f, -rotStep, 0.0f));
+                if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS) scene.rotateSelected(glm::vec3(0.0f, 0.0f, rotStep));
+                if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS) scene.rotateSelected(glm::vec3(0.0f, 0.0f, -rotStep));
+            }
             break;
         case UiLayer::TransformMode::Scale:
-            if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) scene.scaleSelected(glm::vec3(scaleStep, 0.0f, 0.0f));
-            if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) scene.scaleSelected(glm::vec3(-scaleStep, 0.0f, 0.0f));
-            if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS) scene.scaleSelected(glm::vec3(0.0f, scaleStep, 0.0f));
-            if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS) scene.scaleSelected(glm::vec3(0.0f, -scaleStep, 0.0f));
-            if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS) scene.scaleSelected(glm::vec3(0.0f, 0.0f, scaleStep));
-            if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS) scene.scaleSelected(glm::vec3(0.0f, 0.0f, -scaleStep));
+            if (!gLightSelected) {
+                if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) scene.scaleSelected(glm::vec3(scaleStep, 0.0f, 0.0f));
+                if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) scene.scaleSelected(glm::vec3(-scaleStep, 0.0f, 0.0f));
+                if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS) scene.scaleSelected(glm::vec3(0.0f, scaleStep, 0.0f));
+                if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS) scene.scaleSelected(glm::vec3(0.0f, -scaleStep, 0.0f));
+                if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS) scene.scaleSelected(glm::vec3(0.0f, 0.0f, scaleStep));
+                if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS) scene.scaleSelected(glm::vec3(0.0f, 0.0f, -scaleStep));
+            }
             break;
         case UiLayer::TransformMode::Select:
         default:
